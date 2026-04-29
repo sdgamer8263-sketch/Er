@@ -1,0 +1,13 @@
+cd /var/www/pterodactyl && \
+rm -rf /tmp/er_blueprints && \
+git clone https://github.com/sdgamer8263-sketch/Er.git /tmp/er_blueprints && \
+for file in /tmp/er_blueprints/*.blueprint; do \
+  filename=$(basename "$file"); \
+  cp "$file" ./; \
+  echo "🚀 Installing $filename..."; \
+  blueprint -install "$filename"; \
+  rm "$filename"; \
+done && \
+rm -rf /tmp/er_blueprints && \
+echo "✅ All blueprints have been imported and installed automatically!"
+
