@@ -1,0 +1,76 @@
+#!/bin/bash
+
+set -e
+
+######################################################################################
+#  Pterodactyl Addons & Themes Installer (For Existing Panel)                       #
+######################################################################################
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+CYAN='\033[0;36m'
+YELLOW='\033[1;33m'
+WHITE='\033[1;37m'
+NC='\033[0m' # No Color
+
+# Variables
+GITHUB_URL="https://github.com/MuLTiAcidi/pterodactyl-addons"
+INSTALL_DIR="/var/www/pterodactyl"
+
+clear
+echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║                    🎮 ADDONS & THEMES INSTALLER 🎮                            ║${NC}"
+echo -e "${CYAN}╚═══════════════════════════════════════════════════════════════════════════════╝${NC}"
+echo ""
+
+# Check if running as root
+if [[ $EUID -ne 0 ]]; then
+    echo -e "${RED}Error: This script must be run as root!${NC}"
+    echo "Please run: sudo bash install.sh"
+    exit 1
+fi
+
+# Check if Pterodactyl is already installed
+if [ ! -f "$INSTALL_DIR/.env" ]; then
+    echo -e "${RED}Error: Pterodactyl panel not found at $INSTALL_DIR!${NC}"
+    echo "Make sure your panel is already installed before running this."
+    exit 1
+fi
+
+echo -e "${CYAN}[1/5] Downloading Addons and Themes...${NC}"
+cd $INSTALL_DIR
+curl -Lo panel.tar.gz "${GITHUB_URL}/releases/latest/download/pterodactyl-addons-panel.tar.gz"
+tar -xzf panel.tar.gz
+rm panel.tar.gz
+echo -e "${GREEN}✓ Files extracted successfully${NC}"
+echo ""
+
+echo -e "${CYAN}[2/5] Updating PHP Dependencies...${NC}"
+COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction
+echo -e "${GREEN}✓ Dependencies updated${NC}"
+echo ""
+
+echo -e "${CYAN}[3/5] Running Database Migrations (Adding addon tables)...${NC}"
+php artisan migrate --force
+echo -e "${GREEN}✓ Database migrations completed${NC}"
+echo ""
+
+echo -e "${CYAN}[4/5] Building Frontend Assets (This might take a few minutes)...${NC}"
+yarn install --frozen-lockfile
+yarn build:production
+echo -e "${GREEN}✓ Frontend built successfully${NC}"
+echo ""
+
+echo -e "${CYAN}[5/5] Fixing Permissions and Clearing Caches...${NC}"
+php artisan view:clear
+php artisan config:clear
+chown -R www-data:www-data $INSTALL_DIR/*
+systemctl restart pteroq 2>/dev/null || true
+echo -e "${GREEN}✓ Permissions fixed and cache cleared${NC}"
+echo ""
+
+echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
+echo -e "${GREEN}           ADDONS & THEMES INSTALLED SUCCESSFULLY! 🎉          ${NC}"
+echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
+echo -e "${WHITE}Please clear your browser cache to see the changes.${NC}"
